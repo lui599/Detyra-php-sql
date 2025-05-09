@@ -1,0 +1,61 @@
+<?php
+$host = 'localhost';
+$db   = 'your_database_name';
+$user = 'your_database_user';
+$pass = 'your_database_password';
+$charset = 'utf8mb4';
+
+$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+$options = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+];
+
+try {
+    $pdo = new PDO($dsn, $user, $pass, $options);
+    echo "Database connection successful.<br>";
+} catch (PDOException $e) {
+    die("Database connection failed: " . $e->getMessage());
+}
+
+// Define the table name
+$tableName = 'your_table_name';
+
+// Sample data to insert
+$data = [
+    'first_name' => 'Lui',
+    'last_name'  => 'Alla',
+    'email'      => 'luisalla@gmail.com'
+];
+
+try {
+    $stmt = $pdo->prepare("INSERT INTO $tableName (first_name, last_name, email) VALUES (:first_name, :last_name, :email)");
+    $stmt->execute($data);
+
+    echo "Data inserted successfully.<br><br>";
+
+    echo "Current records in the database:<br>";
+    $result = $pdo->query("SELECT * FROM $tableName");
+
+    echo "<table border='1' cellpadding='5' cellspacing='0'>";
+    echo "<tr>";
+    
+    for ($i = 0; $i < $result->columnCount(); $i++) {
+        $col = $result->getColumnMeta($i);
+        echo "<th>" . $col['name'] . "</th>";
+    }
+    echo "</tr>";
+    foreach ($result as $row) {
+        echo "<tr>";
+        foreach ($row as $value) {
+            echo "<td>$value</td>";
+        }
+        echo "</tr>";
+    }
+    echo "</table>";
+
+} catch (PDOException $e) {
+    echo "Failed to insert data: " . $e->getMessage();
+}
+?>
