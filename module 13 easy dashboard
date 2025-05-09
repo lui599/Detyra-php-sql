@@ -1,0 +1,11 @@
+<?php
+session_start();
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
+?>
+<!DOCTYPE html><body class="p-5">
+  <h1>Welcome, User #<?=htmlspecialchars($_SESSION['user_id'])?>!</h1>
+  <a href="logout.php" class="btn btn-danger">Logout</a>
+</body></html>
