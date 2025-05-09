@@ -1,0 +1,99 @@
+<?php
+
+$host = 'localhost';
+$db   = 'your_database_name';
+$user = 'your_database_user';
+$pass = 'your_database_password';
+$charset = 'utf8mb4';
+
+$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+$options = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+];
+
+try {
+
+    $pdo = new PDO($dsn, $user, $pass, $options);
+    echo "Database connection successful.<br>";
+} catch (PDOException $e) {
+    die("Database connection failed: " . $e->getMessage());
+}
+
+
+$tableName = 'your_table_name';
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update'])) {
+    $id = $_POST['id'];
+    $first_name = trim($_POST['first_name']);
+    $last_name = trim($_POST['last_name']);
+    $email = trim($_POST['email']);
+
+    if (empty($first_name) || empty($last_name) || empty($email)) {
+        echo "All fields are required.<br>";
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo "Invalid email format.<br>";
+    } else {
+        try {
+            $stmt = $pdo->prepare("UPDATE $tableName SET first_name = :first_name, last_name = :last_name, email = :email WHERE id = :id");
+            $stmt->execute([
+                ':first_name' => $first_name,
+                ':last_name'  => $last_name,
+                ':email'      => $email,
+                ':id'         => $id
+            ]);
+            echo "Record updated successfully.<br>";
+        } catch (PDOException $e) {
+            echo "Failed to update data: " . $e->getMessage();
+        }
+    }
+}
+
+
+try {
+    $stmt = $pdo->query("SELECT * FROM $tableName");
+    $records = $stmt->fetchAll();
+} catch (PDOException $e) {
+    die("Failed to retrieve data: " . $e->getMessage());
+}
+?>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Update Record</title>
+</head>
+<body>
+
+<h2>Select a Record to Update</h2>
+
+<table border="1" cellpadding="5" cellspacing="0">
+    <tr>
+        <th>ID</th>
+        <th>First Name</th>
+        <th>Last Name</th>
+        <th>Email</th>
+        <th>Action</th>
+    </tr>
+    <?php foreach ($records as $record): ?>
+        <tr>
+            <td><?= $record['id'] ?></td>
+            <td><?= $record['first_name'] ?></td>
+            <td><?= $record['last_name'] ?></td>
+            <td><?= $record['email'] ?></td>
+            <td>
+                <form method="post" action="">
+                    <input type="hidden" name="id" value="<?= $record['id'] ?>">
+                    <input type="text" name="first_name" value="<?= $record['first_name'] ?>" required>
+                    <input type="text" name="last_name" value="<?= $record['last_name'] ?>" required>
+                    <input type="email" name="email" value="<?= $record['email'] ?>" required>
+                    <input type="submit" name="update" value="Update">
+                </form>
+            </td>
+        </tr>
+    <?php endforeach; ?>
+</table>
+
+</body>
+</html>
