@@ -1,0 +1,10 @@
+<?php
+$radius = readline("Enter the radius of the circle: ");
+
+if (!is_numeric($radius) || $radius <= 0) {
+    echo "Please enter a valid positive number for the radius.\n";
+    exit;
+}
+$area = pi() * pow($radius, 2);
+echo "The area of the circle with radius $radius is: $area\n";
+?>
