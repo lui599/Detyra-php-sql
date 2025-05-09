@@ -1,0 +1,52 @@
+<?php
+$host = 'localhost';
+$db   = 'your_database_name';
+$user = 'your_database_user';
+$pass = 'your_database_password';
+$charset = 'utf8mb4';
+
+$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+$options = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+];
+
+try {
+    $pdo = new PDO($dsn, $user, $pass, $options);
+    echo "Database connection successful.<br>";
+} catch (PDOException $e) {
+    die("Database connection failed: " . $e->getMessage());
+}
+
+try {
+    $stmt = $pdo->query("SHOW TABLES");
+    $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    if (empty($tables)) {
+        echo "No tables found in the database.<br>";
+        exit;
+    }
+
+    echo "Tables in the database:<br>";
+    foreach ($tables as $index => $table) {
+        echo ($index + 1) . ". $table<br>";
+    }
+    $tableToDelete = readline("\nEnter the name of the table to delete: ");
+    if (!in_array($tableToDelete, $tables)) {
+        echo "Table '$tableToDelete' does not exist.<br>";
+    } else {
+        
+        $confirmation = readline("Are you sure you want to delete the table '$tableToDelete'? (yes/no): ");
+        
+        if (strtolower($confirmation) === 'yes') {
+            $pdo->exec("DROP TABLE $tableToDelete");
+            echo "Table '$tableToDelete' has been deleted successfully.<br>";
+        } else {
+            echo "Operation canceled.<br>";
+        }
+    }
+} catch (PDOException $e) {
+    echo "An error occurred: " . $e->getMessage();
+}
+?>
