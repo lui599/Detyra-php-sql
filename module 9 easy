@@ -1,0 +1,70 @@
+<?php
+$host = 'localhost';
+$db   = 'your_database_name';
+$user = 'your_database_user';
+$pass = 'your_database_password';
+$charset = 'utf8mb4';
+
+
+$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+$options = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+];
+
+try {
+
+    $pdo = new PDO($dsn, $user, $pass, $options);
+    echo "Database connection successful.<br>";
+} catch (PDOException $e) {
+    die("Database connection failed: " . $e->getMessage());
+}
+
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $first_name = trim($_POST['first_name']);
+    $last_name = trim($_POST['last_name']);
+    $email = trim($_POST['email']);
+
+    if (empty($first_name) || empty($last_name) || empty($email)) {
+        echo "All fields are required.<br>";
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo "Invalid email format.<br>";
+    } else {
+        try {
+            $stmt = $pdo->prepare("INSERT INTO your_table_name (first_name, last_name, email) VALUES (:first_name, :last_name, :email)");
+            $stmt->execute([
+                ':first_name' => $first_name,
+                ':last_name'  => $last_name,
+                ':email'      => $email
+            ]);
+            echo "Data inserted successfully.<br>";
+        } catch (PDOException $e) {
+            echo "Failed to insert data: " . $e->getMessage();
+        }
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Data Insertion Form</title>
+</head>
+<body>
+    <h2>Enter Your Details</h2>
+    <form method="post" action="">
+        <label for="first_name">First Name:</label><br>
+        <input type="text" id="first_name" name="first_name"><br><br>
+        
+        <label for="last_name">Last Name:</label><br>
+        <input type="text" id="last_name" name="last_name"><br><br>
+        
+        <label for="email">Email:</label><br>
+        <input type="email" id="email" name="email"><br><br>
+        
+        <input type="submit" value="Submit">
+    </form>
+</body>
+</html>
