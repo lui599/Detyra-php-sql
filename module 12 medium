@@ -1,0 +1,169 @@
+<?php
+session_start();
+
+$host = 'localhost'; $db = 'your_db'; $user = 'your_user'; $pass = 'your_pass';
+$dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
+$options = [
+  PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+  PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+  PDO::ATTR_EMULATE_PREPARES   => false,
+];
+try {
+    $pdo = new PDO($dsn, $user, $pass, $options);
+} catch (PDOException $e) {
+    die("DB Connection Failed: " . htmlspecialchars($e->getMessage()));
+}
+
+if (isset($_GET['action']) && $_GET['action'] === 'logout') {
+    $_SESSION = [];
+    session_destroy();  // destroy session data :contentReference[oaicite:10]{index=10}
+    header('Location: index.php');
+    exit;
+}
+
+if (isset($_SESSION['user_id'])):
+?>
+<!DOCTYPE html>
+<html><head>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head><body class="p-5">
+  <div class="container">
+    <h1>Welcome, User #<?= htmlspecialchars($_SESSION['user_id']) ?>!</h1>
+    <a href="?action=logout" class="btn btn-danger">Logout</a>
+  </div>
+</body></html>
+<?php
+    exit;
+endif;
+
+$errors = ['login'=>[], 'register'=>[]];
+$data   = ['login'=>['email'=>''], 'register'=>['username'=>'','email'=>'']];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'register') {
+    $u = trim($_POST['username'] ?? '');
+    $e = trim($_POST['email']    ?? '');
+    $p = $_POST['password']     ?? '';
+    $data['register'] = ['username'=>$u,'email'=>$e];
+
+  
+    if ($u === '') { $errors['register']['username'] = "Username is required."; }
+    if ($e === '') { $errors['register']['email']    = "Email is required."; }
+    elseif (!filter_var($e, FILTER_VALIDATE_EMAIL)) { $errors['register']['email'] = "Invalid email format."; }  // :contentReference[oaicite:11]{index=11}
+    if ($p === '') { $errors['register']['password'] = "Password is required."; }
+    elseif (strlen($p) < 6) { $errors['register']['password'] = "Password must be at least 6 characters."; }
+
+    
+    if (empty($errors['register'])) {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username=:u OR email=:e");
+        $stmt->execute([':u'=>$u,':e'=>$e]);
+        if ($stmt->fetchColumn() > 0) {
+            $errors['register']['general'] = "Username or email already taken.";
+        }
+    }
+
+    
+    if (empty($errors['register'])) {
+        $hash = password_hash($p, PASSWORD_DEFAULT);  // :contentReference[oaicite:12]{index=12}
+        $ins = $pdo->prepare("INSERT INTO users (username,email,password) VALUES (:u,:e,:pw)");
+        $ins->execute([':u'=>$u,':e'=>$e,':pw'=>$hash]);
+        $_SESSION['user_id'] = $pdo->lastInsertId();
+        header('Location: index.php'); exit;
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'login') {
+    $e = trim($_POST['email'] ?? '');
+    $p = $_POST['password'] ?? '';
+    $data['login']['email'] = $e;
+
+    if ($e === '') { $errors['login']['email'] = "Email is required."; }
+    if ($p === '') { $errors['login']['password'] = "Password is required."; }
+
+    if (empty($errors['login'])) {
+        $stmt = $pdo->prepare("SELECT id,password FROM users WHERE email=:e");
+        $stmt->execute([':e'=>$e]);               // :contentReference[oaicite:13]{index=13}
+        $user = $stmt->fetch();
+        if ($user && password_verify($p, $user['password'])) {  // :contentReference[oaicite:14]{index=14}
+            session_regenerate_id(true);           // :contentReference[oaicite:15]{index=15}
+            $_SESSION['user_id'] = $user['id'];
+            header('Location: index.php'); exit;
+        }
+        $errors['login']['general'] = "Incorrect email or password.";
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Auth</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"> <!-- :contentReference[oaicite:16]{index=16} -->
+</head>
+<body class="bg-light">
+  <div class="container py-5">
+    <ul class="nav nav-tabs mb-4" id="authTab" role="tablist">  <!-- :contentReference[oaicite:17]{index=17} -->
+      <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#login">Login</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#register">Sign Up</button></li>
+    </ul>
+
+    <div class="tab-content">
+      <!-- LOGIN -->
+      <div class="tab-pane fade show active" id="login">
+        <?php if (!empty($errors['login']['general'])): ?>
+          <div class="alert alert-danger"><?= htmlspecialchars($errors['login']['general']) ?></div>
+        <?php endif; ?>
+        <form method="post" novalidate>
+          <input type="hidden" name="action" value="login">
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input name="email" type="email"
+              class="form-control <?= isset($errors['login']['email'])?'is-invalid':''?>"
+              value="<?= htmlspecialchars($data['login']['email']) ?>" required>
+            <div class="invalid-feedback"><?= htmlspecialchars($errors['login']['email'] ?? '') ?></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input name="password" type="password"
+              class="form-control <?= isset($errors['login']['password'])?'is-invalid':''?>" required>
+            <div class="invalid-feedback"><?= htmlspecialchars($errors['login']['password'] ?? '') ?></div>
+          </div>
+          <button class="btn btn-primary w-100">Login</button>
+        </form>
+      </div>
+
+      <!-- REGISTER -->
+      <div class="tab-pane fade" id="register">
+        <?php if (!empty($errors['register']['general'])): ?>
+          <div class="alert alert-danger"><?= htmlspecialchars($errors['register']['general']) ?></div>
+        <?php endif; ?>
+        <form method="post" novalidate>
+          <input type="hidden" name="action" value="register">
+          <div class="mb-3">
+            <label class="form-label">Username</label>
+            <input name="username" type="text"
+              class="form-control <?= isset($errors['register']['username'])?'is-invalid':''?>"
+              value="<?= htmlspecialchars($data['register']['username']) ?>" required>
+            <div class="invalid-feedback"><?= htmlspecialchars($errors['register']['username'] ?? '') ?></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input name="email" type="email"
+              class="form-control <?= isset($errors['register']['email'])?'is-invalid':''?>"
+              value="<?= htmlspecialchars($data['register']['email']) ?>" required>
+            <div class="invalid-feedback"><?= htmlspecialchars($errors['register']['email'] ?? '') ?></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input name="password" type="password"
+              class="form-control <?= isset($errors['register']['password'])?'is-invalid':''?>" required>
+            <div class="invalid-feedback"><?= htmlspecialchars($errors['register']['password'] ?? '') ?></div>
+          </div>
+          <button class="btn btn-success w-100">Sign Up</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
