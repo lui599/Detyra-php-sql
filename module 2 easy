@@ -1,0 +1,6 @@
+<?php
+$firstName = "Lui";
+$lastName = "Alla";
+$message = "Hello, " . $firstName . " " . $lastName . "!";
+echo $message;
+?>
